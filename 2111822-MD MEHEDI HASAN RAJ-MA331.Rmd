@@ -1,0 +1,228 @@
+---
+title: "MA331-Coursework"
+subtitle: "Text analytics of the TED talks by Jonathan Harris and Noah Feldman"
+author: "2111822-MD MEHEDI HASAN-RAJ"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+### Don't delete this setup code chunk from your file
+knitr::opts_chunk$set(echo = FALSE)   ## DON'T ALTER THIS: this is to prevent printing the code in your "html" file.
+# 
+# if(!require(dsEssex)){
+#   if(!require("devtools")) install.packages("devtools")
+#   devtools::install_github("statcourses/dsEssex")
+# }
+# install.packages('tidytext')
+# install.packages('stopwords')
+# install.packages('ggrepel')
+# install.packages('here')
+# install.packages('gradethis')
+
+library(tidyverse)
+library(tidytext)
+library(stopwords)
+library(ggrepel)
+library(scales)
+library(plotly)
+library(here)
+#library(gradethis)
+require(dsEssex)
+
+
+data(ted_talks)
+glimpse(ted_talks)
+
+length(ted_talks$speaker)
+tidy_talks = ted_talks %>% unnest_tokens(word,text)
+head(tidy_talks)
+
+
+```
+
+
+
+## Introduction
+Text analysing is a new AI technic where we can collect and extract the more valuable insights from the real-world unstructured text data. In the project, I try to extract the valuable insights using different types of text analyst technique. I will analysis the text from TED talk. In the work, I try to analysis the speaker’s word frequency and sentiment analysis from the ‘ted_talk’ dataset that contains 992 text script and 849 different speakers. This dataset is collected  on summer of 2018. This dataset also contains 5 columns including talk_id, headline, text,sepeaker, and views( till collected day). For the analysis, I use two speakers. One is ‘Jonathan Harris’ who talked about the  topic ‘The web as art’  on December 2007, and ‘the web’s secret stories’ on March 2007. Second one is ‘Noah Feldman, talked about ‘Hamilton vs. Madison and the birth of American partisanship’ on April 2017 and  ‘Plitics and religion are techlogies, on February 2003.
+
+
+
+## Methods
+In this section, I try to explain our working procedure of the analysis. I divide my  work into some steps, and they are, installing packages and dataset, pre-processing the data, analysing the word frequency, sentiment analysis, plotting the graph.In the first, we install some important and mendatory packages for our project for example, tidyverse, tidytext, stopwords, ggreprel, and so on.
+
+#### Pre-processing
+In the pre-processing part, we first load the data into memory. Our dataset contains lots of text ted talk and it is almost 992 for 849 different speakers. The data is in text format. For analysis the text, I divide the text into words by using unnest_tokens method as well as I use filter method for filtering the speakers that we need for the analysis.
+
+#### Word Frequency Analysis
+In the frequency analysis, I first do analysis the world frequency for each speaker and finally compare the result. In the first step, I want to exclude the most common English word that we generally called stop words. We use ‘antijoin’ method on our filtered data to exclude the most common word in English. Then we count the word and sort the most frequency word by each speaker. For the comparison by speaker, we count word frequency by speakers, then we group the frequency by word.  After that do filter the words whose frequency sum is more than 7 and ungrouping the word. Finally, I plot the graph for each speaker and do the comparison by the speaker. 
+
+##### Word frequency analysis for Jonathan Harris
+
+```{r pressure, echo=FALSE,warning=FALSE,message=FALSE}
+
+#                       Jonathan Harris word used counting
+#-------------------------------------------------------------------------
+Jonathan_Harris = tidy_talks%>%filter(speaker =="Jonathan Harris")%>%
+   anti_join(get_stopwords())%>%
+   count(speaker,word,sort = TRUE)
+
+
+J_H_top20_used_word = slice_max(Jonathan_Harris,n,n=20)
+mutate(J_H_top20_used_word,word=reorder(word,n))%>%
+  ggplot(aes(n,word)) + geom_col()
+```
+
+
+##### Word frequency analysis for Noah Feldman
+
+```{r dgsh, echo=FALSE,warning=FALSE,message=FALSE}
+
+
+#                   Noah Feldman word use counting
+#-------------------------------------------------------------------------
+Noah_Feldman = tidy_talks%>%filter(speaker =="Noah Feldman")%>%
+   anti_join(get_stopwords())%>%
+   count(speaker,word,sort = TRUE)
+
+
+N_F_top20_used_word = slice_max(Noah_Feldman,n,n=20)
+mutate(N_F_top20_used_word,word=reorder(word,n))%>% #mutate makes the thin sorting in order
+  ggplot(aes(n,word)) + geom_col()
+
+
+
+```
+
+
+
+
+```{r both, echo=FALSE,warning=FALSE,message=FALSE}
+
+
+#                                 compare for both speaker
+#-------------------------------------------------------------------------------------
+
+
+
+MainData = tidy_talks %>% filter(speaker %in% c("Jonathan Harris", "Noah Feldman")) %>%
+  anti_join(get_stopwords())
+
+frequency = MainData%>%count(speaker,word,sort = TRUE)%>%
+  left_join(MainData%>% count(speaker,name="total"))%>%
+  mutate(freq = n / total)
+
+
+
+
+frequency <- frequency %>% 
+  select(speaker, word, freq)
+  
+frequency = head(frequency,30)
+ggplot(data = frequency,aes(freq,word,color=speaker))+geom_point()
+
+
+
+```
+
+
+
+```{r both2, echo=FALSE,warning=FALSE,message=FALSE}
+
+
+tidy_talks %>%
+  filter(speaker %in% c('Jonathan Harris','Jonathan Harris')) %>%
+  anti_join(get_stopwords()) %>%
+  count(speaker, word,sort=TRUE) %>%
+  group_by(word) %>%
+  filter(sum(n) > 7) %>%
+  ungroup() %>%
+  pivot_wider(names_from = "speaker", values_from = "n", values_fill = 0) %>%
+  ggplot(aes('Jonathan Harris','Jonathan Harris')) +
+  geom_abline(color = "red", size = 1.2, alpha = 0.8, lty = 2) +
+  
+  geom_text_repel(aes(label = word), max.overlaps = Inf)
+
+
+
+```
+
+
+
+
+
+#### Sentiment Analysis
+I try to compare the word by sentiment. I generally, compare the word by ‘bing’ and ‘nrc’. Bing and nrc are the sentiment lexicon. In the sentiment analysis, I first filtering the data for two speakers and text already converted in world. Then, I use antijoin method to exclude the most common word. After that I use a method called inner join that will join the dataset which is common. In the inner join method, we use ‘get_sentiments’ method as use parameter for this ‘nrc, for the first analysis and ‘bing’ for the second analysis. For nrc, sentiment is assigned one or more for one word, for example, for the word ‘abandon, the sentiments are fear, negative, sadness. On the other hand, in the bing, one sentiment assigned for one word. Only two sentiments are available for word. It can be negative or positive. Now I only select those columns that are needed like speaker, word, and sentiment. Then I count the sentiment by speaker. Then I convert the data in wider form using pivot_wider function. Now we get sentiment count. Now I need to calculate the OR using the function and make the result in descending order. After that we get sentiment counts. We also perform the log, CI lower, upper in the OR result so that it helps us to do analysis as well as plotting. 
+
+```{r sentiment1, echo=FALSE,warning=FALSE,message=FALSE}
+
+
+sentiment_count = tidy_talks %>%
+  filter(speaker %in% c('Jonathan Harris','Noah Feldman'))%>%
+  anti_join(get_stopwords()) %>%
+  inner_join(get_sentiments("nrc"),by = "word")%>%
+  select(speaker,word,sentiment)%>%
+  count(speaker,sentiment)%>%
+  pivot_wider(names_from = speaker, values_from = n,values_fill = 0)
+
+
+sentimates_count_or =mutate(sentiment_count,OR = compute_OR(sentiment_count$`Jonathan Harris`,sentiment_count$`Noah Feldman`,correction = FALSE))%>%
+  arrange(desc(OR))
+
+
+sentimates_count_or%>%
+  mutate(log_OR = log(OR),CI.lower = CI_log_OR(log_OR,sentiment_count$`Jonathan Harris`,sentiment_count$`Noah Feldman`,upper = FALSE),CI.upper = CI_log_OR(log_OR,sentiment_count$`Jonathan Harris`,sentiment_count$`Noah Feldman`))%>%
+  mutate(sentiment = reorder(sentiment,log_OR))%>%
+  ggplot(aes(sentiment,log_OR))+
+  geom_point()+
+  geom_errorbar(aes(ymin=CI.lower,ymax=CI.upper))+
+  geom_hline(yintercept = 0,linetype="dashed",color="blue",size = 1)+
+  ylab("'Noah Feldman'       vs       'Jonathan Harris'") + ggtitle("                                  NRC sentiment of two speakers")+
+  coord_flip()
+
+
+```
+
+## Results
+
+In the Jonathan’f frequency table, we can see the word most about people, stories, feel, feelings. If we watch the ted talked about Jonathan we can release that he talked about the story. He is a story writer so his speech will be all about the story related speech. So, from the table we can extract the valuable information. If we see the sentiment table, we also get the sentiment of his speech. For the story, he talked about secret thing, joy and sadness thing. He used less about fear related, negative related and anger related word. If we analysis his speech from the video, we also can see that his speech was mostly positive thing. He rarely used negative word.
+
+
+```{r sentiment2 , echo=FALSE,warning=FALSE,message=FALSE}
+
+
+#sentiment analysis using bing
+
+
+
+sentiment_count = tidy_talks %>%
+  filter(speaker %in% c('Jonathan Harris','Noah Feldman'))%>%
+  anti_join(get_stopwords()) %>%
+  inner_join(get_sentiments("bing"),by = "word")%>%
+  select(speaker,word,sentiment)%>%
+  count(speaker,sentiment)%>%
+  pivot_wider(names_from = speaker, values_from = n,values_fill = 0)
+
+
+sentimates_count_or =mutate(sentiment_count,OR = compute_OR(sentiment_count$`Jonathan Harris`,sentiment_count$`Noah Feldman`,correction = FALSE))%>%
+  arrange(desc(OR))
+
+
+sentimates_count_or%>%
+  mutate(log_OR = log(OR),CI.lower = CI_log_OR(log_OR,sentiment_count$`Jonathan Harris`,sentiment_count$`Noah Feldman`,upper = FALSE),CI.upper = CI_log_OR(log_OR,sentiment_count$`Jonathan Harris`,sentiment_count$`Noah Feldman`))%>%
+  mutate(sentiment = reorder(sentiment,log_OR))%>%
+  ggplot(aes(sentiment,log_OR))+
+  geom_point()+
+  geom_errorbar(aes(ymin=CI.lower,ymax=CI.upper))+
+  geom_hline(yintercept = 0,linetype="dashed",color="blue",size = 1)+
+  ylab("'Noah Feldman'       vs       'Jonathan Harris'") + ggtitle("                                  NRC sentiment of two speakers")+
+  coord_flip()
+
+
+
+```
+
+
+On the other hand, Noah Feldman who mostly talked about politics and religion. His speech title was Politics and religion are technologies. From the title we can easy analysis that his all talk will be about politics and religious related. In the frequency table, Islam, people, democracy, war are the most frequent word that he used. So, which are politics and religion related. If we analysis his world then we can get that he talked about fear, trust, anger related and less talked about joy sadness related. His most of the word focus on negative and rare world is positive. In the sentiment table we can see the same thing.
+
+## Discussion
+We analysis both speaker where one speaker who speaks more about positive related things like happiness, surprising on the other speakers, Noah Feldman, who mostly talked about religious and politics. So, his speech focus on negative related word.  We can analysis many things, but we put this on for future task.
